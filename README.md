@@ -2,9 +2,7 @@
 
 This package demonstrates how to use Stan to fit dynamic linear models of form
 
-x<sub>k+1</sub> = A(&theta;)x<sub>k</sub> + B(&theta;)u<sub>k</sub> + N(0,Q(&theta;))
-
-y<sub>k+1</sub> = C(&theta;)x<sub>k+1</sub> + N(0,R(&theta;)).
+<img src="https://latex.codecogs.com/gif.latex?\begin{align*}&space;x_{k&plus;1}&space;&&space;=&space;A(\theta)x_k&space;&plus;&space;B(\theta)u_k&space;&&space;&plus;&space;N(0,&space;Q(\theta))\\&space;y_{k&plus;1}&space;&&space;=&space;C(\theta)x_{k&plus;1}&space;&&space;&plus;&space;N(0,&space;R(\theta))&space;\end{}" title="\begin{align*} x_{k+1} & = A(\theta)x_k + B(\theta)u_k & + N(0, Q(\theta))\\ y_{k+1} & = C(\theta)x_{k+1} & + N(0, R(\theta)) \end{}" />
 
 That is, we fit some static parameters of a linear state space model, including possibly parameters for the model and observation noise. In addition, we show how to sample the states given the parameters efficiently, inspired by the blog post in <url>http://www.juhokokkala.fi/blog/posts/kalman-filter-style-recursion-to-marginalize-state-variables-to-speed-up-stan-inference/</url> (here we consider a more general case than in the blog post).
 
