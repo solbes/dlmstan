@@ -2,7 +2,7 @@
 
 This package demonstrates how to use Stan to fit dynamic linear models of form
 
-<img src="https://latex.codecogs.com/gif.latex?\begin{align*}&space;x_{k&plus;1}&space;&&space;=&space;A(\theta)x_k&space;&plus;&space;B(\theta)u_k&space;&&space;&plus;&space;N(0,&space;Q(\theta))\\&space;y_{k&plus;1}&space;&&space;=&space;C(\theta)x_{k&plus;1}&space;&&space;&plus;&space;N(0,&space;R(\theta))&space;\end{}" title="\begin{align*} x_{k+1} & = A(\theta)x_k + B(\theta)u_k & + N(0, Q(\theta))\\ y_{k+1} & = C(\theta)x_{k+1} & + N(0, R(\theta)) \end{}" />
+<img src="https://latex.codecogs.com/gif.latex?\begin{align*}&space;x_{k&plus;1}&space;&&space;=&space;A(\theta)x_k&space;&plus;&space;B(\theta)u_k&space;&&space;&plus;&space;N(0,&space;Q(\theta))\\&space;y_{k&plus;1}&space;&&space;=&space;K(\theta)x_{k&plus;1}&space;&&space;&plus;&space;N(0,&space;R(\theta))&space;\end{}" title="\begin{align*} x_{k+1} & = A(\theta)x_k + B(\theta)u_k & + N(0, Q(\theta))\\ y_{k+1} & = K(\theta)x_{k+1} & + N(0, R(\theta)) \end{}" />
 
 That is, we fit some static parameters of a linear state space model, including possibly parameters for the model and observation noise. In addition, we show how to sample the states given the parameters efficiently, inspired by the blog post in <url>http://www.juhokokkala.fi/blog/posts/kalman-filter-style-recursion-to-marginalize-state-variables-to-speed-up-stan-inference/</url> (here we consider a more general case than in the blog post).
 
@@ -14,7 +14,7 @@ For a linear state space system, the likelihood of the parameters can be efficie
 
 <img src="https://latex.codecogs.com/gif.latex?p(y_{1:n}&space;|&space;\theta)&space;=&space;p(y_n&space;|&space;y_{1:n-1},&space;\theta)p(y_{1:n-1}&space;|&space;y_{1:n-2},&space;\theta)&space;\cdots&space;p(y_2&space;|&space;y_1,&space;\theta)&space;p(y_1&space;|&space;\theta)" title="p(y_{1:n} | \theta) = p(y_n | y_{1:n-1}, \theta)p(y_{1:n-1} | y_{1:n-2}, \theta) \cdots p(y_2 | y_1, \theta) p(y_1 | \theta)" />
 
-The individual predictive distributions can be calculated in the linear case recursively as follows:
+The individual predictive distributions can be calculated in the linear case recursively as follows (dropping the parameter dependency from the matrices here for simplicity):
 
 1) Predict the state forward: <img src="https://latex.codecogs.com/gif.latex?x_k&space;|&space;y_{1:k-1},&space;\theta&space;\sim&space;N(x_k^p,&space;C_k_p)" title="x_k | y_{1:k-1}, \theta \sim N(x_k^p, C_k^p)" /> where the predicted mean and covariance are 
 
@@ -26,3 +26,4 @@ The individual predictive distributions can be calculated in the linear case rec
 
 3) Calculate the posterior predictive distribution: <img src="https://latex.codecogs.com/gif.latex?y_k&space;|&space;y_{1:k-1},&space;\theta&space;\sim&space;N(Kx_k^p,&space;K&space;C_k^p&space;K^T&space;&plus;&space;R)" title="y_k | y_{1:k-1}, \theta \sim N(Kx_k^p, K C_k^p K^T + R)" />
 
+Now the final likelihood is the combination of the above densities.
