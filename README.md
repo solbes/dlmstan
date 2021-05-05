@@ -1,4 +1,4 @@
-# dlmstan - Dynamic Linear Models in Stan
+# dlmstan - Dynamic Linear Models fitted with Stan
 
 This package demonstrates how to use Stan to fit dynamic linear models of form
 
