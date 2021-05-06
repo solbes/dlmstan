@@ -43,6 +43,8 @@ where the first equation follows from the Markovian model (conditional independe
 
 We can think of the first one as "likelihood" with x<sub>k+1</sub> as "data" and the latter as prior, which gives us the posterior <img src="https://latex.codecogs.com/gif.latex?x_k&space;|&space;x_{k&plus;1},&space;y_{1:k},&space;\theta&space;\sim&space;N(\mu_k,&space;\Sigma_k)" title="x_k | x_{k+1}, y_{1:k}, \theta \sim N(\mu_k, \Sigma_k)" />, where
 
+<img src="https://latex.codecogs.com/gif.latex?\begin{align*}&space;\Sigma_k&space;&&space;=&space;(A^T&space;Q^{-1}&space;A&space;&plus;&space;(C_k^{est})^{-1})^{-1}&space;\\&space;\mu_k&space;&&space;=&space;\Sigma_k&space;(A^T&space;R^{-1}&space;(x_{k&plus;1}-Bu_k)&plus;(C_k^{est})^{-1}x_k^{est})&space;\end{}" title="\begin{align*} \Sigma_k & = (A^T Q^{-1} A + (C_k^{est})^{-1})^{-1} \\ \mu_k & = \Sigma_k (A^T R^{-1} (x_{k+1}-Bu_k)+(C_k^{est})^{-1}x_k^{est}) \end{}" />
+
 That is, if we store all the results from the Kalman filter forward pass, we can calculate a random sample given &theta; using the pre-calculated results.
 
-<img src="https://latex.codecogs.com/gif.latex?\begin{align*}&space;\Sigma_k&space;&&space;=&space;(A^T&space;Q^{-1}&space;A&space;&plus;&space;(C_k^{est})^{-1})^{-1}&space;\\&space;\mu_k&space;&&space;=&space;\Sigma_k&space;(A^T&space;R^{-1}&space;(x_{k&plus;1}-Bu_k)&plus;(C_k^{est})^{-1}x_k^{est})&space;\end{}" title="\begin{align*} \Sigma_k & = (A^T Q^{-1} A + (C_k^{est})^{-1})^{-1} \\ \mu_k & = \Sigma_k (A^T R^{-1} (x_{k+1}-Bu_k)+(C_k^{est})^{-1}x_k^{est}) \end{}" />
+### Stan code
