@@ -43,8 +43,119 @@ where the first equation follows from the Markovian model (conditional independe
 
 We can think of the first one as "likelihood" with x<sub>k+1</sub> as "data" and the latter as prior, which gives us the posterior <img src="https://latex.codecogs.com/gif.latex?x_k&space;|&space;x_{k&plus;1},&space;y_{1:k},&space;\theta&space;\sim&space;N(\mu_k,&space;\Sigma_k)" title="x_k | x_{k+1}, y_{1:k}, \theta \sim N(\mu_k, \Sigma_k)" />, where
 
-<img src="https://latex.codecogs.com/gif.latex?\begin{align*}&space;\Sigma_k&space;&&space;=&space;(A^T&space;Q^{-1}&space;A&space;&plus;&space;(C_k^{est})^{-1})^{-1}&space;\\&space;\mu_k&space;&&space;=&space;\Sigma_k&space;(A^T&space;R^{-1}&space;(x_{k&plus;1}-Bu_k)&plus;(C_k^{est})^{-1}x_k^{est})&space;\end{}" title="\begin{align*} \Sigma_k & = (A^T Q^{-1} A + (C_k^{est})^{-1})^{-1} \\ \mu_k & = \Sigma_k (A^T Q^{-1} (x_{k+1}-Bu_k)+(C_k^{est})^{-1}x_k^{est}) \end{}" />
+<img src="https://latex.codecogs.com/gif.latex?\begin{align*}&space;\Sigma_k&space;&&space;=&space;(A^T&space;Q^{-1}&space;A&space;&plus;&space;(C_k^{est})^{-1})^{-1}&space;\\&space;\mu_k&space;&&space;=&space;\Sigma_k&space;(A^T&space;Q^{-1}&space;(x_{k&plus;1}-Bu_k)&plus;(C_k^{est})^{-1}x_k^{est})&space;\end{}" title="\begin{align*} \Sigma_k & = (A^T Q^{-1} A + (C_k^{est})^{-1})^{-1} \\ \mu_k & = \Sigma_k (A^T Q^{-1} (x_{k+1}-Bu_k)+(C_k^{est})^{-1}x_k^{est}) \end{}" />
 
 That is, if we store all the results from the Kalman filter forward pass, we can calculate a random sample given &theta; using the pre-calculated results.
 
 ### Stan code
+
+The Stan code for sampling the parameters and states given the parameters using the above trick is given below. The user needs to write the functions `build_A`, `build_B` etc for the application in question, which can be done using the `functions` block in Stan (see some examples below). Other than that, the below code should be suitable for most DLM problems.
+
+```
+data {
+    // dimensions
+    int N_obs;
+    int N_theta;
+    int N_noise_theta;
+    int state_dim;
+    int input_dim;
+    int obs_dim;
+    
+    // observations
+    vector[obs_dim] Y_obs[N_obs];
+    vector[input_dim] U_obs[N_obs];
+    
+    // initial mean and covariance
+    matrix[state_dim, state_dim] P0;
+    vector[state_dim] m0;
+    
+    // normal prior for parameters
+    matrix[N_theta, N_theta] theta_Sig;
+    vector[N_theta] theta_mu;
+    
+    // normal prior for noise parameters
+    matrix[N_noise_theta, N_noise_theta] noise_Sig;
+    vector[N_noise_theta] noise_mu;
+}
+parameters {
+    vector[N_theta] theta;
+    vector<lower=0>[N_noise_theta] noise_theta;
+}
+transformed parameters {
+
+    vector[obs_dim] y_pred[N_obs];
+    matrix[obs_dim, obs_dim] S_pred[N_obs];
+    vector[state_dim] m[N_obs];
+    matrix[state_dim, state_dim] P[N_obs];
+    matrix[state_dim, state_dim] A;
+    matrix[state_dim, input_dim] B;
+    matrix[obs_dim, state_dim] C;
+    matrix[obs_dim, obs_dim] R;
+    matrix[state_dim, state_dim] Q;
+    
+    vector[state_dim] m_i;
+    matrix[state_dim, state_dim] P_i;
+    vector[state_dim] m_pred;
+    matrix[state_dim, state_dim] P_pred;
+    matrix[state_dim, obs_dim] G;
+    
+    // build the matrices
+    A = build_A(theta);
+    B = build_B(theta);
+    C = build_C(theta);
+    Q = build_Q(noise_theta);
+    R = build_R(noise_theta);
+    
+    m_i = m0;
+    P_i = P0;
+    
+    for (i in 1:N_obs) {
+    
+        // predicted means and variances for state
+        m_pred = A*m_i + B*U_obs[i];
+        P_pred = A*P_i*A' + Q;
+        
+        // save predicted mean and var for obs
+        y_pred[i] = C*m_pred;
+        S_pred[i] = C*P_pred*C' + R;
+    
+        // update with KF
+        G = (P_pred*C')/S_pred[i];
+        m_i = m_pred+G*(Y_obs[i]-y_pred[i]);
+        P_i = P_pred-G*C*P_pred;
+        
+        // store for later use (state sampling)
+        m[i] = m_i;
+        P[i] = P_i;
+    }
+}
+model {
+    // Gaussian prior
+    theta ~ multi_normal(theta_mu, theta_Sig);
+    noise_theta ~ multi_normal(noise_mu, noise_Sig);
+
+    // Likelihood
+    for (i in 1:N_obs) {
+        Y_obs[i] ~ multi_normal(y_pred[i], S_pred[i]);
+    }   
+}
+generated quantities {
+    vector[state_dim] x_samples[N_obs];
+    matrix[state_dim, state_dim] AP_k;
+    matrix[state_dim, state_dim] AtQinv = A'/Q;
+    int k;
+    vector[state_dim] mu_k;
+    matrix[state_dim, state_dim] Sig_k;
+    
+    // Sampling x given the parameters
+    x_samples[N_obs] = multi_normal_rng(m[N_obs], P[N_obs]);
+    for (i in 1:N_obs-1) {
+        k = N_obs-i;
+        AP_k = A*P[k];
+        Sig_k = P[k]-AP_k'*((AP_k*A'+Q)\AP_k);
+        mu_k = Sig_k*(AtQinv*(x_samples[k+1]-B*U_obs[k]) + P[k]\m[k]);
+        x_samples[k] = multi_normal_rng(mu_k,Sig_k);
+    }
+}
+"""
+```
