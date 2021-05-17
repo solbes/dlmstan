@@ -18,7 +18,7 @@ For a linear state space system, the likelihood of the parameters can be efficie
 
 The individual predictive distributions can be calculated in the linear case recursively as follows (dropping the parameter dependency from the matrices here for simplicity), starting from <img src="https://latex.codecogs.com/gif.latex?x_k&space;|&space;y_{1:k},&space;\theta&space;\sim&space;N(x_k^{est},&space;C_k^{est})" title="x_k | y_{1:k}, \theta \sim N(x_k^{est}, C_k^{est})" />:
 
-1) Predict the state forward: <img src="https://latex.codecogs.com/gif.latex?x_k&space;|&space;y_{1:k-1},&space;\theta&space;\sim&space;N(x_k^p,&space;C_k_p)" title="x_k | y_{1:k-1}, \theta \sim N(x_k^p, C_k^p)" /> where the predicted mean and covariance are 
+1) Predict the state forward: <img src="https://latex.codecogs.com/gif.latex?x_k&space;|&space;y_{1:k-1},&space;\theta&space;\sim&space;N(x_k^p,&space;C_k^p)" title="x_k | y_{1:k-1}, \theta \sim N(x_k^p, C_k^p)" /> where the predicted mean and covariance are 
 
 <img src="https://latex.codecogs.com/gif.latex?\begin{align*}&space;x_k^p&space;&&space;=&space;A&space;x_{k-1}^{est}&space;&plus;&space;B&space;u_k&space;\\&space;C_k^p&space;&&space;=&space;A&space;C_k^{est}&space;A^T&space;&plus;&space;Q&space;\end{}" title="\begin{align*} x_k^p & = A x_{k-1}^{est} + B u_k \\ C_k^p & = A C_k^{est} A^T + Q \end{}" />
 
