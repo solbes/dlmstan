@@ -1,1 +1,7 @@
 notebooks
+*.json
+*.hpp
+nile
+output
+.idea
+.ipynb_checkpoints
