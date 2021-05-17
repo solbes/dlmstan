@@ -8,6 +8,8 @@ That is, we fit some static parameters of a linear state space model, including 
 
 Note that there is also a function already available in Stan for DLM fitting, see <url>https://mc-stan.org/docs/2_26/functions-reference/gaussian-dynamic-linear-models.html</url>. The difference here is that we include the "forcing term" B(&theta;)u<sub>k</sub> and consider also the random sampling of the states given the parameters.
 
+The code runs with `CmdStanPy`, which is a thin python-wrapper around `CmdStan`, the command line interface to Stan. In addition to `CmdStanPy`, you'll need some standard python stuff like `numpy`, `pandas` and `matplotlib`.
+
 ### Theory
 
 For a linear state space system, the likelihood of the parameters can be efficiently calculated by integrating out the state variables using a Kalman Filter recursion. The likelihood of the parameters can be calculated using the chain rule of joint probability:
