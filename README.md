@@ -8,6 +8,8 @@ That is, we fit some static parameters of a linear state space model, including 
 
 Note that there is also a function already available in Stan for DLM fitting, see <url>https://mc-stan.org/docs/2_26/functions-reference/gaussian-dynamic-linear-models.html</url>. The difference here is that we include the "forcing term" B(&theta;)u<sub>k</sub> and consider also the random sampling of the states given the parameters.
 
+The code runs with `CmdStanPy`, which is a thin python-wrapper around `CmdStan`, the command line interface to Stan. In addition to `CmdStanPy`, you'll need some standard python stuff like `numpy`, `pandas` and `matplotlib`.
+
 ### Theory
 
 For a linear state space system, the likelihood of the parameters can be efficiently calculated by integrating out the state variables using a Kalman Filter recursion. The likelihood of the parameters can be calculated using the chain rule of joint probability:
@@ -16,7 +18,7 @@ For a linear state space system, the likelihood of the parameters can be efficie
 
 The individual predictive distributions can be calculated in the linear case recursively as follows (dropping the parameter dependency from the matrices here for simplicity), starting from <img src="https://latex.codecogs.com/gif.latex?x_k&space;|&space;y_{1:k},&space;\theta&space;\sim&space;N(x_k^{est},&space;C_k^{est})" title="x_k | y_{1:k}, \theta \sim N(x_k^{est}, C_k^{est})" />:
 
-1) Predict the state forward: <img src="https://latex.codecogs.com/gif.latex?x_k&space;|&space;y_{1:k-1},&space;\theta&space;\sim&space;N(x_k^p,&space;C_k_p)" title="x_k | y_{1:k-1}, \theta \sim N(x_k^p, C_k^p)" /> where the predicted mean and covariance are 
+1) Predict the state forward: <img src="https://latex.codecogs.com/gif.latex?x_k&space;|&space;y_{1:k-1},&space;\theta&space;\sim&space;N(x_k^p,&space;C_k^p)" title="x_k | y_{1:k-1}, \theta \sim N(x_k^p, C_k^p)" /> where the predicted mean and covariance are 
 
 <img src="https://latex.codecogs.com/gif.latex?\begin{align*}&space;x_k^p&space;&&space;=&space;A&space;x_{k-1}^{est}&space;&plus;&space;B&space;u_k&space;\\&space;C_k^p&space;&&space;=&space;A&space;C_k^{est}&space;A^T&space;&plus;&space;Q&space;\end{}" title="\begin{align*} x_k^p & = A x_{k-1}^{est} + B u_k \\ C_k^p & = A C_k^{est} A^T + Q \end{}" />
 
@@ -49,113 +51,15 @@ That is, if we store all the results from the Kalman filter forward pass, we can
 
 ### Stan code
 
-The Stan code for sampling the parameters and states given the parameters using the above trick is given below. The user needs to write the functions `build_A`, `build_B` etc for the application in question, which can be done using the `functions` block in Stan (see some examples below). Other than that, the below code should be suitable for most DLM problems.
+The general Stan code for sampling the parameters and states given the parameters using the above trick is given in <url>https://github.com/solbes/dlmstan/blob/main/dlm.stan</url>. The code does not run on it's own, the user needs to write the functions `build_A`, `build_B` etc for the application in question, which can be done using the `functions` block in Stan, see the examples below. The user also needs to feed in data in a standard format, see again the examples.
 
-```
-data {
-    // dimensions
-    int N_obs;
-    int N_theta;
-    int N_noise_theta;
-    int state_dim;
-    int input_dim;
-    int obs_dim;
-    
-    // observations
-    vector[obs_dim] Y_obs[N_obs];
-    vector[input_dim] U_obs[N_obs];
-    
-    // initial mean and covariance
-    matrix[state_dim, state_dim] P0;
-    vector[state_dim] m0;
-    
-    // normal prior for parameters
-    matrix[N_theta, N_theta] theta_Sig;
-    vector[N_theta] theta_mu;
-    
-    // normal prior for noise parameters
-    matrix[N_noise_theta, N_noise_theta] noise_Sig;
-    vector[N_noise_theta] noise_mu;
-}
-parameters {
-    vector[N_theta] theta;
-    vector<lower=0>[N_noise_theta] noise_theta;
-}
-transformed parameters {
+Some comments about the code:
+- User writes the `functions` block for the problem at hand, which is then appended by the general code `dlm.stan`, see the examples.
+- If matrix `B` is not present in the application, the user needs to still feed in a dummy zero matrix, see the first example
+- The code separates two types of parameters, normal "model parameters" and noise parameters that enter the covariance matrices `Q` and `R`. Normal priors are given for both, whose parameters can be given in the data, see the examples.
+- Initial values for the states need to be given in the data, see the examples.
+- In the DLM code, the matrix inversion lemma is used to avoid explicitly inverting the filtering covariance matrices.
 
-    vector[obs_dim] y_pred[N_obs];
-    matrix[obs_dim, obs_dim] S_pred[N_obs];
-    vector[state_dim] m[N_obs];
-    matrix[state_dim, state_dim] P[N_obs];
-    matrix[state_dim, state_dim] A;
-    matrix[state_dim, input_dim] B;
-    matrix[obs_dim, state_dim] C;
-    matrix[obs_dim, obs_dim] R;
-    matrix[state_dim, state_dim] Q;
-    
-    vector[state_dim] m_i;
-    matrix[state_dim, state_dim] P_i;
-    vector[state_dim] m_pred;
-    matrix[state_dim, state_dim] P_pred;
-    matrix[state_dim, obs_dim] G;
-    
-    // build the matrices
-    A = build_A(theta);
-    B = build_B(theta);
-    C = build_C(theta);
-    Q = build_Q(noise_theta);
-    R = build_R(noise_theta);
-    
-    m_i = m0;
-    P_i = P0;
-    
-    for (i in 1:N_obs) {
-    
-        // predicted means and variances for state
-        m_pred = A*m_i + B*U_obs[i];
-        P_pred = A*P_i*A' + Q;
-        
-        // save predicted mean and var for obs
-        y_pred[i] = C*m_pred;
-        S_pred[i] = C*P_pred*C' + R;
-    
-        // update with KF
-        G = (P_pred*C')/S_pred[i];
-        m_i = m_pred+G*(Y_obs[i]-y_pred[i]);
-        P_i = P_pred-G*C*P_pred;
-        
-        // store for later use (state sampling)
-        m[i] = m_i;
-        P[i] = P_i;
-    }
-}
-model {
-    // Gaussian prior
-    theta ~ multi_normal(theta_mu, theta_Sig);
-    noise_theta ~ multi_normal(noise_mu, noise_Sig);
+### Examples
 
-    // Likelihood
-    for (i in 1:N_obs) {
-        Y_obs[i] ~ multi_normal(y_pred[i], S_pred[i]);
-    }   
-}
-generated quantities {
-    vector[state_dim] x_samples[N_obs];
-    matrix[state_dim, state_dim] AP_k;
-    matrix[state_dim, state_dim] AtQinv = A'/Q;
-    int k;
-    vector[state_dim] mu_k;
-    matrix[state_dim, state_dim] Sig_k;
-    
-    // Sampling x given the parameters
-    x_samples[N_obs] = multi_normal_rng(m[N_obs], P[N_obs]);
-    for (i in 1:N_obs-1) {
-        k = N_obs-i;
-        AP_k = A*P[k];
-        Sig_k = P[k]-AP_k'*((AP_k*A'+Q)\AP_k);
-        mu_k = Sig_k*(AtQinv*(x_samples[k+1]-B*U_obs[k]) + P[k]\m[k]);
-        x_samples[k] = multi_normal_rng(mu_k,Sig_k);
-    }
-}
-"""
-```
+1) Nile river, estimating 3 noise parameters: <url>https://github.com/solbes/dlmstan/blob/main/examples/stan_dlm_nile.ipynb</url>
