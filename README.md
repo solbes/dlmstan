@@ -63,3 +63,4 @@ Some comments about the code:
 ### Examples
 
 1) Nile river, estimating 3 noise parameters: <url>https://github.com/solbes/dlmstan/blob/main/examples/stan_dlm_nile.ipynb</url>
+2) Beer cooling, 2 model parameters and 2 noise parameters: <url>https://github.com/solbes/dlmstan/blob/main/examples/stan_dlm_beer.ipynb</url>
