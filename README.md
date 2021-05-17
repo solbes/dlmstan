@@ -58,6 +58,7 @@ Some comments about the code:
 - If matrix `B` is not present in the application, the user needs to still feed in a dummy zero matrix, see the first example
 - The code separates two types of parameters, normal "model parameters" and noise parameters that enter the covariance matrices `Q` and `R`. Normal priors are given for both, whose parameters can be given in the data, see the examples.
 - Initial values for the states need to be given in the data, see the examples.
+- In the DLM code, the matrix inversion lemma is used to avoid explicitly inverting the filtering covariance matrices.
 
 ### Examples
 
