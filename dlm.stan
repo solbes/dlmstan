@@ -8,8 +8,8 @@ data {
     int obs_dim;
     
     // observations
-    vector[obs_dim] Y_obs[N_obs];
-    vector[input_dim] U_obs[N_obs];
+    array[N_obs] vector[obs_dim] Y_obs;
+    array[N_obs] vector[input_dim] U_obs;
     
     // initial mean and covariance
     matrix[state_dim, state_dim] P0;
@@ -29,10 +29,10 @@ parameters {
 }
 transformed parameters {
 
-    vector[obs_dim] y_pred[N_obs];
-    matrix[obs_dim, obs_dim] S_pred[N_obs];
-    vector[state_dim] m[N_obs];
-    matrix[state_dim, state_dim] P[N_obs];
+    array[N_obs] vector[obs_dim] y_pred;
+    array[N_obs] matrix[obs_dim, obs_dim] S_pred;
+    array[N_obs] vector[state_dim] m;
+    array[N_obs] matrix[state_dim, state_dim] P;
     matrix[state_dim, state_dim] A;
     matrix[state_dim, input_dim] B;
     matrix[obs_dim, state_dim] C;
@@ -86,7 +86,7 @@ model {
     }   
 }
 generated quantities {
-    vector[state_dim] x_samples[N_obs];
+    array[N_obs] vector[state_dim] x_samples;
     matrix[state_dim, state_dim] AP_k;
     matrix[state_dim, state_dim] AtQinv = A'/Q;
     int k;
